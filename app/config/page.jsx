@@ -76,18 +76,27 @@ function MyComponent() {
         <div>
             <div className="gradient" />
           <div className="app">
-            <h1 className="head_text">Edit and Save JSON Data</h1>
+            <h1 className="head_text">Add new URL's</h1>
             {editedData && (
               <>
                 {imageUrls.map((url, index) => (
-                  <input
-                    key={index}
-                    className="form_input glassmorphism"
-                    type="text"
-                    value={url}
-                    onChange={(event) => handleImageUrlChange(index, event)}
-                  />
+                <div key={index} className="flex items-center mt-6 mb-2">
+                    <label
+                        htmlFor={`image-${index + 1}`}
+                        className="mr-8 font-bold"
+                    >
+                        Image{index + 1}:
+                    </label>
+                    <input
+                        id={`image-${index + 1}`}
+                        className="w-[300px] glassmorphism"
+                        type="text"
+                        value={url}
+                        onChange={(event) => handleImageUrlChange(index, event)}
+                    />
+                </div>
                 ))}
+
                 <button className="black_btn mt-2" onClick={handleSave}>
                   Save Changes
                 </button>
