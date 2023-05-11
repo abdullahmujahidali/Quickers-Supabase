@@ -1,0 +1,10 @@
+{
+    "version": 2,
+    "builds": [
+        { "src": "next.config.js", "use": "@vercel/next" }
+    ],
+    "routes": [
+        { "src": "/config_en.json", "dest": "/path/to/your/json/file.json" },
+        { "src": "/(.*)", "dest": "/$1" }
+    ]
+}
