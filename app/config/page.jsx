@@ -2,6 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { createClient } from '@supabase/supabase-js';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 function MyComponent() {
     const supabase = createClient(
@@ -12,7 +15,7 @@ function MyComponent() {
     const [editedData, setEditedData] = useState(null);
     const [imageUrls, setImageUrls] = useState([]);
 
-    const { data: jsonData, error: fetchError } = useSWR(
+    const { data: jsonData, error: fetchError, mutate } = useSWR(
         process.env.NEXT_PUBLIC_API_ROUTE,
         async (url) => {
           const response = await fetch(url);
@@ -70,14 +73,32 @@ function MyComponent() {
             .update('config_en.json', JSON.stringify(newData));
     
         if (uploadError) {
+
             console.error('Error updating file:', uploadError);
         } else {
-            console.log('JSON file updated successfully.');
+          toast.success('Update success', {
+            position: 'bottom-right',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          });
             // Trigger revalidation and update the cache
             mutate(process.env.NEXT_PUBLIC_API_ROUTE);
         }
         } catch (error) {
-        console.error('Error saving JSON file:', error);
+          toast.error('Something went wrong', {
+            position: 'bottom-right',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          })
+          console.error('Error saving JSON file:', error);
         }
     };
 
@@ -88,7 +109,9 @@ function MyComponent() {
     };
 
         return (
+          
             <div>
+                    <ToastContainer />
                 <div className="gradient" />
             <div className="app">
                 <h1 className="head_text">Add new URL's</h1>
