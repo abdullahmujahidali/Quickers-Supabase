@@ -1,22 +1,42 @@
 'use client'
 import React, { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { createClient } from '@supabase/supabase-js';
 
 function MyComponent() {
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPERBASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_KEY
+        );
     const [originalData, setOriginalData] = useState(null);
-    const [showDialog, setShowDialog] = useState(false);
     const [editedData, setEditedData] = useState(null);
-    const [confirmSave, setConfirmSave] = useState(false);
     const [imageUrls, setImageUrls] = useState([]);
-  
-    useEffect(() => {
-      fetchJsonData();
-    }, []);
-  
-    const fetchJsonData = async () => {
-      try {
-        const response = await fetch('https://quickers-uk.vercel.app/');
-        if (response.ok) {
-          const jsonData = await response.json();
+
+    const { data: jsonData, error: fetchError } = useSWR(
+        process.env.NEXT_PUBLIC_API_ROUTE,
+        async (url) => {
+          const response = await fetch(url);
+          if (response.ok) {
+            const blob = await response.blob();
+            const reader = new FileReader();
+      
+            return new Promise((resolve, reject) => {
+              reader.onloadend = () => {
+                const parsedData = JSON.parse(reader.result);
+                resolve(parsedData);
+              };
+      
+              reader.onerror = reject;
+              reader.readAsText(blob);
+            });
+          } else {
+            throw new Error('Failed to fetch JSON data');
+          }
+        }
+      );
+      
+      useEffect(() => {
+        if (jsonData) {
           const specialOffersLayout = jsonData?.HorizonLayout?.find(
             (layout) => layout?.title?.title === 'Special Offers 👀'
           );
@@ -24,100 +44,81 @@ function MyComponent() {
           setEditedData(specialOffersLayout);
           const urls = specialOffersLayout?.items?.map((item) => item?.image) || [];
           setImageUrls(urls);
-        } else {
-          throw new Error('Failed to fetch JSON data');
         }
-      } catch (error) {
-        console.error('Error fetching JSON data:', error);
-      }
-    };
-  
-    const handleSave = () => {
+      }, [jsonData]);
+      
+    
+    const handleSave = async () => {
         const newData = { ...originalData };
-      
+
         if (newData && newData.HorizonLayout) {
-          const specialOffersLayout = newData.HorizonLayout.find(
+        const specialOffersLayout = newData.HorizonLayout.find(
             (layout) => layout.title?.title === 'Special Offers 👀'
-          );
-      
-          if (specialOffersLayout) {
+        );
+
+        if (specialOffersLayout) {
             specialOffersLayout.items.forEach((item, index) => {
-              item.image = imageUrls[index];
+            item.image = imageUrls[index];
             });
-          }
+        }
         }
         setEditedData(newData);
-        setShowDialog(false);
-        setConfirmSave(true);
-      };
-      
-  
-    const handleReject = () => {
-      setEditedData(originalData);
-      setShowDialog(false);
-    };
-  
-    const handleEdit = (event) => {
-      const { value } = event.target;
-      try {
-        const parsedData = JSON.parse(value);
-        setEditedData(parsedData);
-      } catch (error) {
-        console.error('Error parsing JSON:', error);
-      }
-    };
-  
-    const handleImageUrlChange = (index, event) => {
-      const newImageUrls = [...imageUrls];
-      newImageUrls[index] = event.target.value;
-      setImageUrls(newImageUrls);
-    };
-      return (
-        <div>
-            <div className="gradient" />
-          <div className="app">
-            <h1 className="head_text">Add new URL's</h1>
-            {editedData && (
-              <>
-                {imageUrls.map((url, index) => (
-                <div key={index} className="flex items-center mt-6 mb-2">
-                    <label
-                        htmlFor={`image-${index + 1}`}
-                        className="mr-8 font-bold"
-                    >
-                        Image{index + 1}:
-                    </label>
-                    <input
-                        id={`image-${index + 1}`}
-                        className="w-[300px] glassmorphism"
-                        type="text"
-                        value={url}
-                        onChange={(event) => handleImageUrlChange(index, event)}
-                    />
-                </div>
-                ))}
 
-                <button className="black_btn mt-2" onClick={handleSave}>
-                  Save Changes
-                </button>
-              </>
-            )}
-            {confirmSave && (
-              <div className="prompt_layout">
-                <div className="prompt_card">
-                  <p>Are you sure you want to save the changes?</p>
-                  <button className="black_btn mt-2" onClick={handleSave}>
-                    Save
-                  </button>
-                  <button className="outline_btn mt-2" onClick={handleReject}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
+        try {
+        const { error: uploadError } = await supabase.storage
+            .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET)
+            .update('config_en.json', JSON.stringify(newData));
+    
+        if (uploadError) {
+            console.error('Error updating file:', uploadError);
+        } else {
+            console.log('JSON file updated successfully.');
+            // Trigger revalidation and update the cache
+            mutate(process.env.NEXT_PUBLIC_API_ROUTE);
+        }
+        } catch (error) {
+        console.error('Error saving JSON file:', error);
+        }
+    };
+
+    const handleImageUrlChange = (index, event) => {
+        const newImageUrls = [...imageUrls];
+        newImageUrls[index] = event.target.value;
+        setImageUrls(newImageUrls);
+    };
+
+        return (
+            <div>
+                <div className="gradient" />
+            <div className="app">
+                <h1 className="head_text">Add new URL's</h1>
+                {editedData && (
+                <>
+                    {imageUrls.map((url, index) => (
+                    <div key={index} className="flex items-center mt-6 mb-2">
+                        <label
+                            htmlFor={`image-${index + 1}`}
+                            className="mr-8 font-bold"
+                        >
+                            Image{index + 1}:
+                        </label>
+                        <input
+                            id={`image-${index + 1}`}
+                            className="w-[300px] glassmorphism"
+                            type="text"
+                            value={url}
+                            onChange={(event) => handleImageUrlChange(index, event)}
+                        />
+                    </div>
+                    ))}
+                    <button className="black_btn mt-2" onClick={handleSave}>
+                    Save Changes
+                    </button>
+                </>
+                )}
+            </div>
+            </div>
+        );
 }
 
 export default MyComponent;

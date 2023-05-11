@@ -7,6 +7,8 @@ export const metadata = {
   description: "Dashboard for Quickers Config",
 };
 
+
+
 const RootLayout = ({ children }) => (
   <html lang='en'>
     <body>
