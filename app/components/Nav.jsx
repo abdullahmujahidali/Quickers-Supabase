@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 
+// adding a comment
 const Nav = () => {
 
   return (
